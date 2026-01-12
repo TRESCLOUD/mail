@@ -20,6 +20,11 @@ msgid "(Team"
 msgstr ""
 
 #. module: mail_activity_team
+#: model_terms:ir.ui.view,arch_db:mail_activity_team.mail_activity_view_kanban_open_target
+msgid "<span class=\"fw-bold\">Team: </span>"
+msgstr ""
+
+#. module: mail_activity_team
 #: model:ir.model.fields,field_description:mail_activity_team.field_mail_activity_team__active
 msgid "Active"
 msgstr ""
@@ -143,7 +148,6 @@ msgstr ""
 #. odoo-javascript
 #: code:addons/mail_activity_team/static/src/core/web/activity.xml:0
 #: model:ir.model.fields,field_description:mail_activity_team.field_mail_activity__team_id
-#: model_terms:ir.ui.view,arch_db:mail_activity_team.mail_activity_view_search
 msgid "Team"
 msgstr ""
 
@@ -175,11 +179,6 @@ msgid "Team user"
 msgstr ""
 
 #. module: mail_activity_team
-#: model_terms:ir.ui.view,arch_db:mail_activity_team.mail_activity_view_kanban
-msgid "Team:"
-msgstr ""
-
-#. module: mail_activity_team
 #. odoo-python
 #: code:addons/mail_activity_team/models/mail_activity.py:0
 msgid ""
@@ -198,9 +197,18 @@ msgid "User"
 msgstr ""
 
 #. module: mail_activity_team
+#: model:ir.model.fields,field_description:mail_activity_team.field_account_bank_statement_line__activity_team_user_ids
+#: model:ir.model.fields,field_description:mail_activity_team.field_account_journal__activity_team_user_ids
+#: model:ir.model.fields,field_description:mail_activity_team.field_account_move__activity_team_user_ids
+#: model:ir.model.fields,field_description:mail_activity_team.field_account_payment__activity_team_user_ids
+#: model:ir.model.fields,field_description:mail_activity_team.field_account_setup_bank_manual_config__activity_team_user_ids
 #: model:ir.model.fields,field_description:mail_activity_team.field_mail_activity_mixin__activity_team_user_ids
 #: model:ir.model.fields,field_description:mail_activity_team.field_mailing_mailing__activity_team_user_ids
+#: model:ir.model.fields,field_description:mail_activity_team.field_product_pricelist__activity_team_user_ids
+#: model:ir.model.fields,field_description:mail_activity_team.field_product_product__activity_team_user_ids
+#: model:ir.model.fields,field_description:mail_activity_team.field_product_template__activity_team_user_ids
 #: model:ir.model.fields,field_description:mail_activity_team.field_res_partner__activity_team_user_ids
+#: model:ir.model.fields,field_description:mail_activity_team.field_res_partner_bank__activity_team_user_ids
 #: model:ir.model.fields,field_description:mail_activity_team.field_res_users__activity_team_user_ids
 msgid "test field"
 msgstr ""
