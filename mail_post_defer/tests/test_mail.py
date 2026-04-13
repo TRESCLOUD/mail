@@ -40,7 +40,9 @@ class MessagePostCase(MailPostDeferCommon):
                 ]
             )
             self.assertEqual(len(schedules), 1)
-            self.assertNoMail(self.partner_employee)
+            self.assertNoMail(
+                self.partner_employee, mail_message=self.env["mail.message"]
+            )
 
     def test_forced_arg(self):
         """A forced send via method argument is sent directly."""
@@ -98,7 +100,9 @@ class MessagePostCase(MailPostDeferCommon):
                 ]
             )
             self.assertEqual(len(schedules), 1)
-            self.assertNoMail(self.partner_employee)
+            self.assertNoMail(
+                self.partner_employee, mail_message=self.env["mail.message"]
+            )
             # After 15 seconds, the user updates the message
             with freezegun.freeze_time("2023-01-02 10:00:15"):
                 self.partner_portal._message_update_content(msg, "new body")
@@ -109,7 +113,9 @@ class MessagePostCase(MailPostDeferCommon):
                     ]
                 )
                 self.assertEqual(len(schedules), 1)
-                self.assertNoMail(self.partner_employee)
+                self.assertNoMail(
+                    self.partner_employee, mail_message=self.env["mail.message"]
+                )
             # After a minute, the mail is created
             with freezegun.freeze_time("2023-01-02 10:01:00"):
                 self.env["mail.message.schedule"]._send_notifications_cron()
@@ -145,6 +151,7 @@ class MessagePostCase(MailPostDeferCommon):
             self.assertNoMail(
                 self.partner_employee,
                 author=self.env.user.partner_id,
+                mail_message=self.env["mail.message"],
             )
             # One minute later, the cron has no mails to send
             with freezegun.freeze_time("2023-01-02 10:01:00"):
@@ -153,6 +160,7 @@ class MessagePostCase(MailPostDeferCommon):
                 self.assertNoMail(
                     self.partner_employee,
                     author=self.env.user.partner_id,
+                    mail_message=self.env["mail.message"],
                 )
 
     def test_no_sent_msg_delete(self):
@@ -210,7 +218,10 @@ class MessagePostCase(MailPostDeferCommon):
                 partner_ids=(self.partner_employee | self.partner_portal).ids,
                 res_id=self.ref("base.es"),
             )
-            self.assertNoMail(self.partner_employee | self.partner_portal)
+            self.assertNoMail(
+                self.partner_employee | self.partner_portal,
+                mail_message=self.env["mail.message"],
+            )
             # One minute later, the cron sends the mail
             with freezegun.freeze_time("2023-01-02 10:01:00"):
                 self.env["mail.message.schedule"]._send_notifications_cron()
@@ -223,7 +234,9 @@ class MessagePostCase(MailPostDeferCommon):
                 )
                 # res.partner does not send mail because res.country does not inherit
                 # from mail.thread
-                self.assertNoMail(self.partner_employee)
+                self.assertNoMail(
+                    self.partner_employee, mail_message=self.env["mail.message"]
+                )
         # Safety belt to avoid false positives in this test
         self.assertFalse(hasattr(self.env["res.country"], "_notify_thread"))
         self.assertTrue(hasattr(self.env["res.partner"], "_notify_thread"))
@@ -240,7 +253,9 @@ class MessagePostCase(MailPostDeferCommon):
                 message_type="comment",
                 partner_ids=(self.partner_employee | customer).ids,
             )
-            self.assertNoMail(self.partner_employee | customer)
+            self.assertNoMail(
+                self.partner_employee | customer, mail_message=self.env["mail.message"]
+            )
             # After a minute, mails are sent
             with freezegun.freeze_time("2023-01-02 10:01:00"):
                 self.env["mail.message.schedule"]._send_notifications_cron()
@@ -272,6 +287,50 @@ class MessagePostCase(MailPostDeferCommon):
                 )
 
 
+@freezegun.freeze_time("2023-01-02 10:00:00")
+class ComposerCase(MailPostDeferCommon):
+    """Test the composer wizard (HTML editor) behavior."""
+
+    def test_composer_html_deferred(self):
+        """Messages sent via HTML editor (composer) are deferred."""
+        with self.mock_mail_gateway():
+            composer = (
+                self.env["mail.compose.message"]
+                .with_context(
+                    default_composition_mode="comment",
+                    default_model="res.partner",
+                    default_res_ids=f"[{self.partner_portal.id}]",
+                )
+                .create(
+                    {
+                        "subject": "Test Subject",
+                        "body": "<p>HTML body content</p>",
+                        "partner_ids": [(6, 0, self.partner_employee.ids)],
+                    }
+                )
+            )
+            composer.action_send_mail()
+            schedules = self.env["mail.message.schedule"].search(
+                [
+                    ("mail_message_id.res_id", "=", self.partner_portal.id),
+                    ("mail_message_id.model", "=", "res.partner"),
+                    ("scheduled_datetime", "=", "2023-01-02 10:00:30"),
+                ]
+            )
+            self.assertEqual(len(schedules), 1)
+            self.assertNoMail(
+                self.partner_employee, mail_message=self.env["mail.message"]
+            )
+            with freezegun.freeze_time("2023-01-02 10:01:00"):
+                self.env["mail.message.schedule"]._send_notifications_cron()
+                self.env["mail.mail"].process_email_queue()
+                self.assertSentEmail(
+                    self.env.user.partner_id,
+                    self.partner_employee,
+                    body_content="HTML body content",
+                )
+
+
 @tagged("-at_install", "post_install")
 @freezegun.freeze_time("2023-01-02 10:00:00")
 class AutomaticNotificationCase(MailPostDeferCommon):
@@ -286,7 +345,9 @@ class AutomaticNotificationCase(MailPostDeferCommon):
         with self.mock_mail_gateway():
             self.partner_portal.user_id = self.user_employee.id
             self.partner_portal.flush_recordset()
-            self.assertNoMail(self.partner_employee)
+            self.assertNoMail(
+                self.partner_employee, mail_message=self.env["mail.message"]
+            )
             schedules = self.env["mail.message.schedule"].search(
                 [
                     ("mail_message_id.res_id", "=", self.partner_portal.id),
