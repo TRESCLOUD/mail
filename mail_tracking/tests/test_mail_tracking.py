@@ -39,6 +39,13 @@ class TestMailTracking(TransactionCase):
         self.recipient = self.env["res.partner"].create(
             {"name": "Test recipient", "email": "recipient@example.com"}
         )
+        self.recipient_1 = self.env["res.partner"].create(
+            {"name": "Test recipient 1", "email": "recipient1@example.com"}
+        )
+        self.recipient_2 = self.env["res.partner"].create(
+            {"name": "Test recipient 2", "email": "recipient2@example.com"}
+        )
+        self.recipients = self.recipient + self.recipient_1 + self.recipient_2
         self.last_request = http.request
         http.request = type(
             "obj",
@@ -229,7 +236,7 @@ class TestMailTracking(TransactionCase):
         # suggested recipients
         recipients = self.recipient._message_get_suggested_recipients()
         suggested_mails = {recipient["email"] for recipient in recipients}
-        self.assertIn("unnamed@test.com", suggested_mails)
+        self.assertIn('"Dominique Pinon" <unnamed@test.com>', suggested_mails)
         self.assertEqual(len(recipients), 3)
         # Repeated Cc recipients
         message = self.env["mail.message"].create(
@@ -284,7 +291,7 @@ class TestMailTracking(TransactionCase):
         # suggested recipients
         recipients = self.recipient._message_get_suggested_recipients()
         suggested_mails = {recipient["email"] for recipient in recipients}
-        self.assertIn("support+unnamed@test.com", suggested_mails)
+        self.assertIn('"Dominique Pinon" <support+unnamed@test.com>', suggested_mails)
         self.assertEqual(len(recipients), 3)
         # Repeated To recipients
         message = self.env["mail.message"].create(
@@ -321,7 +328,9 @@ class TestMailTracking(TransactionCase):
         recipients = self.recipient._message_get_suggested_recipients()
         self.assertEqual(len(recipients), 2)
         suggested_mails = {recipient["email"] for recipient in recipients}
-        self.assertNotIn("support+unnamed@test.com", suggested_mails)
+        self.assertNotIn(
+            '"Dominique Pinon" <support+unnamed@test.com>', suggested_mails
+        )
 
     def test_failed_message(self):
         MailMessageObj = self.env["mail.message"]
@@ -775,6 +784,63 @@ class TestMailTracking(TransactionCase):
                 ]
             )
         )
+
+    def test_search_on_email_score(self):
+        recipients_domain = [("id", "in", self.recipients.ids)]
+        mail, tracking = self.mail_send(self.recipient.email)
+        tracking.event_create("open", {})
+        mail, tracking = self.mail_send(self.recipient.email)
+        tracking.event_create("open", {})
+
+        mail, tracking = self.mail_send(self.recipient_1.email)
+        tracking.event_create("reject", {})
+
+        # Ensure the email_score is correctly computed for the 3 partners of the test
+        self.assertEqual(60.0, self.recipient.email_score)
+        self.assertEqual(25.0, self.recipient_1.email_score)
+        self.assertEqual(50.0, self.recipient_2.email_score)
+
+        # Search for email_score > 50
+        result = self.env["res.partner"].search(
+            recipients_domain + [("email_score", ">", 50)]
+        )
+        self.assertEqual(result, self.recipient)
+
+        # Search for email_score < 30
+        result = self.env["res.partner"].search(
+            recipients_domain + [("email_score", "<", 30)]
+        )
+        self.assertEqual(result, self.recipient_1)
+
+        # Search for email_score = 50
+        result = self.env["res.partner"].search(
+            recipients_domain + [("email_score", "=", 50)]
+        )
+        self.assertEqual(result, self.recipient_2)
+
+        # Search for email_score >= 50
+        result = self.env["res.partner"].search(
+            recipients_domain + [("email_score", ">=", 50)]
+        )
+        self.assertEqual(result, self.recipient + self.recipient_2)
+
+        # Search for email_score <= 50
+        result = self.env["res.partner"].search(
+            recipients_domain + [("email_score", "<=", 50)]
+        )
+        self.assertEqual(result, self.recipient_1 + self.recipient_2)
+
+        # Search for email_score != 50
+        result = self.env["res.partner"].search(
+            recipients_domain + [("email_score", "!=", 50)]
+        )
+        self.assertEqual(result, self.recipient + self.recipient_1)
+
+        # Search for email_score between 30 and 65
+        result = self.env["res.partner"].search(
+            recipients_domain + [("email_score", ">", 30), ("email_score", "<", 65)]
+        )
+        self.assertEqual(result, self.recipient + self.recipient_2)
 
 
 @tagged("-at_install", "post_install")
